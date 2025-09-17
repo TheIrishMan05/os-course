@@ -91,3 +91,28 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_dump(void)
+{
+  struct proc *p = myproc();
+
+  uint64 regdump[10];
+
+  regdump[0] = p->trapframe->s2;
+  regdump[1] = p->trapframe->s3;
+  regdump[2] = p->trapframe->s4;
+  regdump[3] = p->trapframe->s5;
+  regdump[4] = p->trapframe->s6;
+  regdump[5] = p->trapframe->s7;
+  regdump[6] = p->trapframe->s8;
+  regdump[7] = p->trapframe->s9;
+  regdump[8] = p->trapframe->s10;
+  regdump[9] = p->trapframe->s11;
+
+  for(int i = 0; i < 10; i++) {
+    printf("%ld\n", regdump[i]);
+  }
+
+  return 0;
+}
