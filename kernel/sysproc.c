@@ -1,3 +1,6 @@
+#include <limits.h>
+#include <stdio.h>
+
 #include "types.h"
 #include "riscv.h"
 #include "defs.h"
@@ -5,6 +8,8 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+
+#define LONG_STRING_MAX_LENGTH (sizeof(long) * CHAR_BIT / 3 + 3) 
 
 uint64
 sys_exit(void)
@@ -97,22 +102,52 @@ sys_dump(void)
 {
   struct proc *p = myproc();
 
-  uint64 regdump[10];
-
-  regdump[0] = p->trapframe->s2;
-  regdump[1] = p->trapframe->s3;
-  regdump[2] = p->trapframe->s4;
-  regdump[3] = p->trapframe->s5;
-  regdump[4] = p->trapframe->s6;
-  regdump[5] = p->trapframe->s7;
-  regdump[6] = p->trapframe->s8;
-  regdump[7] = p->trapframe->s9;
-  regdump[8] = p->trapframe->s10;
-  regdump[9] = p->trapframe->s11;
+  uint64 *regdump = &p->trapframe->s2;
 
   for(int i = 0; i < 10; i++) {
     printf("%ld\n", regdump[i]);
   }
 
+  return 0;
+}
+
+uint64
+sys_dump2(void) {
+  struct proc *p = myproc();
+  
+  int pid;
+  int register_num;
+  uint64 *return_value;
+
+  uint64 *regdump = &p->trapframe->s2;
+  
+  acquire(&p->lock);
+  int is_curr = (pid == p->pid);
+  release(&p->lock);
+  
+  acquire(&wait_lock);
+  int is_parent = (pid == p->parent->pid);
+  release(&wait_lock);
+  if (is_curr == 0 && is_parent == 0) {
+    return -1;
+  } else if (killed(p)) {
+    return -2;
+  } else if (register_num < 2 || register_num > 11) {
+    return -3;
+  } else {
+    for(int i = 0; i < 10; i++) {
+      if (i == register_num) {
+        char buffer[LONG_STRING_MAX_LENGTH];
+        
+        int chars_written = snprintf(buffer, sizeof(buffer), "%ld", regdump[i]);
+
+        if (chars_written < 0 || chars_written >= sizeof(buffer)) {
+          printf("Error of converting or buffer is too small.\n");
+        } else {
+          copyout(p->pagetable, return_value[i], buffer, chars_written);
+        }
+      }
+    }
+  }
   return 0;
 }
