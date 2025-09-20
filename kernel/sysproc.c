@@ -9,7 +9,6 @@
 #include "spinlock.h"
 #include "proc.h"
 
-#define LONG_STRING_MAX_LENGTH (sizeof(long) * CHAR_BIT / 3 + 3) 
 
 uint64
 sys_exit(void)
@@ -19,7 +18,7 @@ sys_exit(void)
   exit(n);
   return 0;  // not reached
 }
-
+ 
 uint64
 sys_getpid(void)
 {
@@ -125,9 +124,7 @@ sys_dump2(void) {
   int is_curr = (pid == p->pid);
   release(&p->lock);
   
-  acquire(&wait_lock);
-  int is_parent = (pid == p->parent->pid);
-  release(&wait_lock);
+  int is_parent = (wait(0) != -1);
   if (is_curr == 0 && is_parent == 0) {
     return -1;
   } else if (killed(p)) {
@@ -137,7 +134,8 @@ sys_dump2(void) {
   } else {
     for(int i = 0; i < 10; i++) {
       if (i == register_num) {
-        char buffer[LONG_STRING_MAX_LENGTH];
+        int buffer_length = sizeof(long) * CHAR_BIT * 3 / 3; 
+        char buffer[buffer_length];
         
         int chars_written = snprintf(buffer, sizeof(buffer), "%ld", regdump[i]);
 
