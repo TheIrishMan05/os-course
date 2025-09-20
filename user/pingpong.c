@@ -1,8 +1,30 @@
-#include <string.h>
-
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user.h"
+
+void child_process(int fd[]) {
+  char* message = "pong";
+  char buffer[16];
+
+  read(fd1[0], buffer, sizeof(buffer));
+  printf("%d: got %s\n", getpid(), buffer);
+  
+  write(fd[1], message, strlen(message) + 1);
+  close(fd[1]);
+}
+
+void parent_process(int fd[]) {
+  char* message = "ping";
+  char buffer[16];
+
+  write(fd[1], message, strlen(message) + 1);
+  close(fd[1]);
+
+  wait(0);
+
+  read(fd[0], buffer, sizeof(buffer));
+  printf("%d: got %s\n", getpid(), buffer);
+}
 
 int main() {
     int fd1[2];
@@ -19,28 +41,12 @@ int main() {
         fprintf(2, "Fork failed");
         exit(1);
     } else if (p > 0) {
-        char* message_parent = "ping";
-        char buffer_parent[strlen(message_parent) + 1];
-
-        write(fd1[1], message_parent, sizeof(message_parent));
-        close(fd1[1]);
-
-        wait(0);
-
-        read(fd1[0], buffer_parent, sizeof(buffer_parent));
-        printf("%d: got %s\n", getpid(), buffer_parent);
-        close(fd1[0]);
-        exit(0);
+        parent_process(fd1);
     } else {
-        char* message_child = "pong";
-        char buffer_child[count_length(message_parent) + 1];
-
-        read(fd1[0], buffer_child, sizeof(buffer_child));
-        printf("%d: got %s\n", getpid(), buffer_child);
-        
-        write(fd1[1], message_child, sizeof(buffer_child));
-        close(fd1[1]);
+        child_process(fd1);
     }
+    exit(0);
 
 }
+
 
