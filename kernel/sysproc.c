@@ -124,7 +124,9 @@ sys_dump2(void) {
   int is_curr = (pid == p->pid);
   release(&p->lock);
   
-  int is_parent = (wait(0) != -1);
+  acquire(&wait_lock);
+  int is_parent = (pid == p->parent->pid);
+  release(&wait_lock);
   if (is_curr == 0 && is_parent == 0) {
     return -1;
   } else if (killed(p)) {
