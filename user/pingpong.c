@@ -2,9 +2,8 @@
 #include "kernel/stat.h"
 #include "user.h"
 
-void child_process(int fd[]) {
+void child_process(int fd[], char buffer[]) {
   char* message = "pong";
-  char buffer[16];
 
   read(fd1[0], buffer, sizeof(buffer));
   printf("%d: got %s\n", getpid(), buffer);
@@ -13,9 +12,9 @@ void child_process(int fd[]) {
   close(fd[1]);
 }
 
-void parent_process(int fd[]) {
+void parent_process(int fd[], char buffer[]) {
   char* message = "ping";
-  char buffer[16];
+  char buffer[BUFFER_SIZE];
 
   write(fd[1], message, strlen(message) + 1);
   close(fd[1]);
@@ -27,6 +26,7 @@ void parent_process(int fd[]) {
 }
 
 int main() {
+    char buffer[16];
     int fd1[2];
     pde_t p;
 
@@ -41,9 +41,9 @@ int main() {
         fprintf(2, "Fork failed");
         exit(1);
     } else if (p > 0) {
-        parent_process(fd1);
+        parent_process(fd1, buffer);
     } else {
-        child_process(fd1);
+        child_process(fd1, buffer);
     }
     exit(0);
 
