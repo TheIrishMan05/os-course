@@ -1,6 +1,3 @@
-#include <limits.h>
-#include <stdio.h>
-
 #include "types.h"
 #include "riscv.h"
 #include "defs.h"
@@ -8,6 +5,14 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+
+
+enum StatusCode {
+  ERROR_PERMISSON_DENIED = -1,
+  ERROR_KILLED_PROCESS = -2,
+  ERROR_OUT_OF_BOUNDS = -3,
+  ERROR_WRITE_ERROR = -4
+};
 
 
 uint64
@@ -112,42 +117,17 @@ sys_dump(void)
 
 uint64
 sys_dump2(void) {
-  struct proc *p = myproc();
-  
-  int pid;
-  int register_num;
-  uint64 *return_value;
+    struct proc *p = myproc();
+    
+    int pid;
+    int register_num;
+    uint64 return_value;
 
-  uint64 *regdump = &p->trapframe->s2;
-  
-  acquire(&p->lock);
-  int is_curr = (pid == p->pid);
-  release(&p->lock);
-  
-  acquire(&wait_lock);
-  int is_parent = (pid == p->parent->pid);
-  release(&wait_lock);
-  if (is_curr == 0 && is_parent == 0) {
-    return -1;
-  } else if (killed(p)) {
-    return -2;
-  } else if (register_num < 2 || register_num > 11) {
-    return -3;
-  } else {
-    for(int i = 0; i < 10; i++) {
-      if (i == register_num) {
-        int buffer_length = sizeof(long) * CHAR_BIT * 3 / 3; 
-        char buffer[buffer_length];
-        
-        int chars_written = snprintf(buffer, sizeof(buffer), "%ld", regdump[i]);
-
-        if (chars_written < 0 || chars_written >= sizeof(buffer)) {
-          printf("Error of converting or buffer is too small.\n");
-        } else {
-          copyout(p->pagetable, return_value[i], buffer, chars_written);
-        }
-      }
-    }
-  }
-  return 0;
+    argint(0, &pid);
+    argint(1, &register_num);
+    argaddr(2, &return_value);
+    
+    return 0;
+    
+    
 }
