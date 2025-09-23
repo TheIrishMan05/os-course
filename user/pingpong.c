@@ -2,19 +2,18 @@
 #include "kernel/stat.h"
 #include "user.h"
 
-void child_process(int fd[], char buffer[]) {
+void child_process(int fd[], char* buffer) {
   char* message = "pong";
 
-  read(fd1[0], buffer, sizeof(buffer));
+  read(fd[0], buffer, sizeof(buffer));
   printf("%d: got %s\n", getpid(), buffer);
   
   write(fd[1], message, strlen(message) + 1);
   close(fd[1]);
 }
 
-void parent_process(int fd[], char buffer[]) {
+void parent_process(int fd[], char* buffer) {
   char* message = "ping";
-  char buffer[BUFFER_SIZE];
 
   write(fd[1], message, strlen(message) + 1);
   close(fd[1]);

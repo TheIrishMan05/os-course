@@ -37,4 +37,4 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("dump");
-enrty("dump2");
+entry("dump2");
