@@ -112,7 +112,7 @@ sys_dump(void)
   uint64 *regdump = &p->trapframe->s2;
 
   for(int i = 0; i < 10; i++) {
-    printf("%ld\n", regdump[i]);
+    printf("s%d = %ld\n", i + 2, regdump[i]);
   }
 
   return 0;
