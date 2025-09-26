@@ -6,6 +6,10 @@
 #include "spinlock.h"
 #include "proc.h"
 
+extern struct spinlock wait_lock;
+
+extern struct proc proc[NPROC];
+
 enum StatusCode {
   ERROR_PERMISSON_DENIED = -1,
   ERROR_KILLED_PROCESS = -2,
@@ -120,7 +124,8 @@ sys_dump2(void) {
     
     int pid;
     int register_num;
-    uint64 return_value;
+    uint64 *return_value;
+    uint64 addr;
 
     struct proc *target_proc;
     
@@ -130,12 +135,16 @@ sys_dump2(void) {
 
     argint(0, &pid);
     argint(1, &register_num);
-    argaddr(2, &return_value);
+    argaddr(2, &addr);
+
+    return_value = &addr;
+    
+    initlock(&wait_lock, "wait_lock");
 
     acquire(&wait_lock);
     for (target_proc = proc; target_proc < &proc[NPROC]; target_proc++) {
       acquire(&target_proc->lock);
-      if (target_proc->pid == pid && target_proc->state != UNUSED) {
+      if (target_proc->pid == pid) {
         found = 1;
         break;
       }
@@ -184,7 +193,7 @@ sys_dump2(void) {
 
 
 
-    if (copyout(p->pagetable, return_value, (char*)&regdump[index], sizeof(regdump[index])) < 0) {
+    if (copyout(p->pagetable, *return_value, (char*)&regdump[index], sizeof(regdump[index])) < 0) {
         return ERROR_WRITE_ERROR;
     }
 
