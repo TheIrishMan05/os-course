@@ -6,17 +6,6 @@
 #include "spinlock.h"
 #include "proc.h"
 
-extern struct spinlock wait_lock;
-
-extern struct proc proc[NPROC];
-
-enum StatusCode {
-  ERROR_PERMISSON_DENIED = -1,
-  ERROR_KILLED_PROCESS = -2,
-  ERROR_OUT_OF_BOUNDS = -3,
-  ERROR_WRITE_ERROR = -4
-};
-
 
 uint64
 sys_exit(void)
@@ -120,85 +109,12 @@ sys_dump(void)
 
 uint64
 sys_dump2(void) {
-    struct proc *p = myproc();
-    
-    int pid;
-    int register_num;
-    uint64 *return_value;
-    uint64 addr;
+  int pid, register_num;
+  uint64 return_value;
 
-    struct proc *target_proc;
-    
-    int found = 0;
-    int is_curr = 0;
-    int is_parent = 0;
+  argint(0, &pid);
+  argint(1, &register_num);
+  argaddr(2, &return_value);
 
-    argint(0, &pid);
-    argint(1, &register_num);
-    argaddr(2, &addr);
-
-    return_value = &addr;
-    
-    initlock(&wait_lock, "wait_lock");
-
-    acquire(&wait_lock);
-    for (target_proc = proc; target_proc < &proc[NPROC]; target_proc++) {
-      acquire(&target_proc->lock);
-      if (target_proc->pid == pid) {
-        found = 1;
-        break;
-      }
-      release(&target_proc->lock);
-    }
-
-    if(!found) {
-      release(&wait_lock);
-      return ERROR_PERMISSON_DENIED;
-    }
-    
-    acquire(&p->lock);
-    is_curr = (p->pid == pid);
-    release(&p->lock);
-
-    acquire(&target_proc->parent->lock);
-    is_parent = (target_proc->parent->pid == p->pid);
-    release(&target_proc->parent->lock);
-    
-    if(is_curr == 0 && is_parent == 0) {
-      release(&target_proc->lock);
-      release(&wait_lock);
-      return ERROR_PERMISSON_DENIED;
-    }
-
-    if(target_proc->killed) {
-      release(&target_proc->lock);
-      release(&wait_lock);
-      return ERROR_KILLED_PROCESS;
-    }
-
-    if(register_num < 2 || register_num > 11) {
-      release(&target_proc->lock);
-      release(&wait_lock);
-      return ERROR_OUT_OF_BOUNDS;
-    }
-
-    uint64 *regdump = &target_proc->trapframe->s2;
-    int index = 0;
-    for(int i = 0; i < 10; i++) {
-      if(i + 2 == register_num) {
-        index = i;
-        break;
-      }
-    }
-
-
-
-    if (copyout(p->pagetable, *return_value, (char*)&regdump[index], sizeof(regdump[index])) < 0) {
-        return ERROR_WRITE_ERROR;
-    }
-
-
-    return 0;
-    
-    
-}
+  return dump2(pid, register_num, (uint64*) return_value);
+}    

@@ -6,6 +6,13 @@
 #include "proc.h"
 #include "defs.h"
 
+enum StatusCode {
+  ERROR_PERMISSON_DENIED = -1,
+  ERROR_KILLED_PROCESS = -2,
+  ERROR_OUT_OF_BOUNDS = -3,
+  ERROR_WRITE_ERROR = -4
+};
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -692,4 +699,64 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int
+dump2(int pid, int register_num, uint64 *return_value) {
+    struct proc *p = myproc();
+    struct proc *target_proc = 0;
+    
+    acquire(&wait_lock);
+
+    for (struct proc *iter_proc = proc; iter_proc < &proc[NPROC]; iter_proc++) {
+      acquire(&iter_proc->lock);
+      if (iter_proc->pid == pid) {
+        target_proc = iter_proc;
+        release(&iter_proc->lock);
+        break;
+      }
+      release(&iter_proc->lock);
+    }
+
+    if(target_proc == 0) {
+      release(&wait_lock);
+      return ERROR_KILLED_PROCESS;
+    }
+    
+    
+    int is_curr = (p == target_proc);
+    int is_parent = (p == target_proc->parent);
+    
+    if(is_curr == 0 && is_parent == 0) {
+      release(&wait_lock);
+      return ERROR_PERMISSON_DENIED;
+    }
+
+    if(register_num < 2 || register_num > 11) {
+      release(&wait_lock);
+      return ERROR_OUT_OF_BOUNDS;
+    }
+
+    uint64 *regdump = &target_proc->trapframe->s2;
+    uint32 value = 0;
+    for(int i = 0; i < 10; i++) {
+      if(i + 2 == register_num) {
+        value = (uint32)regdump[i];
+        break;
+      }
+    }
+
+
+
+    if (copyout(p->pagetable, (uint64)return_value, (char*)&value, sizeof(value)) < 0) {
+      release(&wait_lock);  
+      return ERROR_WRITE_ERROR;
+    }
+
+
+
+    release(&wait_lock);
+    return 0;
+    
+    
 }
