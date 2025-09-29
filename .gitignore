@@ -5,6 +5,8 @@ _*
 *.asm
 *.sym
 *.img
+ci/docker/run.sh
+ci/docker/build.sh
 vectors.S
 bootblock
 entryother
