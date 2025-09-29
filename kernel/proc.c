@@ -705,15 +705,20 @@ int
 dump2(int pid, int register_num, uint64 *return_value) {
     struct proc *p = myproc();
     struct proc *target_proc = 0;
-    
     acquire(&wait_lock);
 
     for (struct proc *iter_proc = proc; iter_proc < &proc[NPROC]; iter_proc++) {
       acquire(&iter_proc->lock);
       if (iter_proc->pid == pid) {
-        target_proc = iter_proc;
-        release(&iter_proc->lock);
-        break;
+        if (iter_proc->pid == p->pid || (iter_proc->parent != 0 && iter_proc->parent->pid == p->pid)) {
+          target_proc = iter_proc;
+          release(&iter_proc->lock);
+          break;
+        } else {
+          release(&iter_proc->lock);
+          release(&wait_lock);
+          return ERROR_PERMISSON_DENIED;
+        }
       }
       release(&iter_proc->lock);
     }
@@ -721,15 +726,6 @@ dump2(int pid, int register_num, uint64 *return_value) {
     if(target_proc == 0) {
       release(&wait_lock);
       return ERROR_KILLED_PROCESS;
-    }
-    
-    
-    int is_curr = (p == target_proc);
-    int is_parent = (p == target_proc->parent);
-    
-    if(is_curr == 0 && is_parent == 0) {
-      release(&wait_lock);
-      return ERROR_PERMISSON_DENIED;
     }
 
     if(register_num < 2 || register_num > 11) {
@@ -746,17 +742,11 @@ dump2(int pid, int register_num, uint64 *return_value) {
       }
     }
 
-
-
     if (copyout(p->pagetable, (uint64)return_value, (char*)&value, sizeof(value)) < 0) {
       release(&wait_lock);  
       return ERROR_WRITE_ERROR;
     }
 
-
-
     release(&wait_lock);
-    return 0;
-    
-    
+    return 0; 
 }
