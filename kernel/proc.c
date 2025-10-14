@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
@@ -704,13 +705,13 @@ procdump(void)
 int
 dump2(int pid, int register_num, uint64 *return_value) {
     struct proc *p = myproc();
-    struct proc *target_proc = 0;
+    struct proc *target_proc = NULL;
     acquire(&wait_lock);
 
     for (struct proc *iter_proc = proc; iter_proc < &proc[NPROC]; iter_proc++) {
       acquire(&iter_proc->lock);
       if (iter_proc->pid == pid) {
-        if (iter_proc->pid == p->pid || (iter_proc->parent != 0 && iter_proc->parent->pid == p->pid)) {
+        if (iter_proc->pid == p->pid || (iter_proc->parent != NULL && iter_proc->parent->pid == p->pid)) {
           target_proc = iter_proc;
           release(&iter_proc->lock);
           break;
@@ -723,7 +724,7 @@ dump2(int pid, int register_num, uint64 *return_value) {
       release(&iter_proc->lock);
     }
 
-    if(target_proc == 0) {
+    if(target_proc == NULL) {
       release(&wait_lock);
       return ERROR_KILLED_PROCESS;
     }
