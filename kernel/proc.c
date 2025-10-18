@@ -714,7 +714,7 @@ dump2(int pid, int register_num, uint64 *return_value) {
       if (iter_proc->pid == pid) {
         if (iter_proc->pid == p->pid || (iter_proc->parent != NULL && iter_proc->parent->pid == p->pid)) {
           target_proc = iter_proc;
-          tf = &target_proc->trapframe;
+          tf = target_proc->trapframe;
           release(&iter_proc->lock);
           break;
         } else {
