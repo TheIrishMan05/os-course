@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
@@ -704,7 +705,8 @@ procdump(void)
 int
 dump2(int pid, int register_num, uint64 *return_value) {
     struct proc *p = myproc();
-    struct proc *target_proc = 0;
+    struct proc *target_proc = NULL;
+    struct trapframe *tf = NULL;
     acquire(&wait_lock);
 
     for (struct proc *iter_proc = proc; iter_proc < &proc[NPROC]; iter_proc++) {
@@ -712,6 +714,7 @@ dump2(int pid, int register_num, uint64 *return_value) {
       if (iter_proc->pid == pid) {
         if (iter_proc->pid == p->pid || (iter_proc->parent != 0 && iter_proc->parent->pid == p->pid)) {
           target_proc = iter_proc;
+          tf = target_proc->trapframe;
           release(&iter_proc->lock);
           break;
         } else {
@@ -733,7 +736,7 @@ dump2(int pid, int register_num, uint64 *return_value) {
       return ERROR_OUT_OF_BOUNDS;
     }
 
-    uint64 *regdump = &target_proc->trapframe->s2;
+    uint64 *regdump = &tf->s2;
     uint32 value = 0;
     for(int i = 0; i < 10; i++) {
       if(i + 2 == register_num) {
