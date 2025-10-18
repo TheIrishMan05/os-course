@@ -698,7 +698,7 @@ procdump(void)
     else
       state = "???";
     printf("%d %s %s", p->pid, state, p->name);
-    printf("\n");*
+    printf("\n");
   }
 }
 
