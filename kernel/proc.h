@@ -105,3 +105,5 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 };
+
+int dump2(int pid, int register_num, uint64* return_value);
