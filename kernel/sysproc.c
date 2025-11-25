@@ -116,4 +116,4 @@ sys_dump2(void) {
   argaddr(2, &return_value);
 
   return dump2(pid, register_num, (uint64*) return_value);
-}    
+}
