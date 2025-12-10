@@ -113,7 +113,7 @@ sys_dump(void)
   }
 
   return 0;
-  }
+}
 
 uint64
 sys_dump2(void) {
