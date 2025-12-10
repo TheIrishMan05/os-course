@@ -1,4 +1,4 @@
-#include "list2.h"
+#include "upd_list.h"
 
 // Saved registers for kernel context switches.
 struct context {
@@ -85,7 +85,7 @@ enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
-  struct list2    list;
+  struct enhanced_list    list;
   struct spinlock lock;
 
   // p->lock must be held when using these:
@@ -109,4 +109,5 @@ struct proc {
   char name[16];               // Process name (debugging)
 };
 
+void ext(void);
 int dump2(int pid, int register_num, uint64* return_value);

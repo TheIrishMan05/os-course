@@ -14,6 +14,15 @@ void freerange(void *pa_start, void *pa_end);
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
 
+struct run {
+  struct run *next;
+};
+
+struct {
+  struct spinlock lock;
+  struct run *freelist;
+} kmem;
+
 void
 kinit()
 {
@@ -28,6 +37,10 @@ kinit()
 void
 kfree(void *pa)
 {
+  if (((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
+    panic("kfree");
+
+  memset(pa, ALLOC_JUNK, PGSIZE);
   bd_free(pa);
 }
 
@@ -37,5 +50,7 @@ kfree(void *pa)
 void *
 kalloc(void)
 {
-  return bd_malloc(PGSIZE);
+  void *p = bd_malloc(PGSIZE);
+  if(p) memset(p, JUNK, PGSIZE);
+  return p;
 }

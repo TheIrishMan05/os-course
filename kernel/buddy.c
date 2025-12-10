@@ -17,7 +17,6 @@ static int nsizes;  // the number of entries in bd_sizes array
 #define NBLK(k) (1 << (MAXSIZE - k))  // Number of block at size k
 #define ROUNDUP(n, sz) \
   (((((n)-1) / (sz)) + 1) * (sz))  // Round up to the next multiple of sz
-#define in_range(a, b, x) (((x) >= (a)) && ((x) < (b)))
 
 typedef struct list Bd_list;
 
@@ -60,14 +59,14 @@ void bit_clear(char *array, int index) {
 }
 
 void bit_flip(char *array, int index) {
-  index >>= 1; // i /= 2
+  index >>= 1;
   char m = (1 << (index % 8));
-  array[index/8] ^= m;
+  array[index / 8] ^= m;
 }
 
 int bit_get(char *array, int index) {
   index >>= 1;
-  char b = array[index/8];
+  char b = array[index / 8];
   char m = (1 << (index % 8));
   return (b & m) == m;
 }
@@ -181,9 +180,6 @@ void bd_free(void *p) {
     int bi = blk_index(k, p);
     int buddy = (bi % 2 == 0) ? bi + 1 : bi - 1;
     bit_flip(bd_sizes[k].alloc, bi);           // free p at size k
-    // After we free, we are bit 0. If xor result is 1, then my buddy is still
-    // allocated. We will break then. If result is 0, then my buddy is also
-    // free, so we can merge!
     if (bit_get(bd_sizes[k].alloc, buddy)) {  // is buddy allocated?
       break;                                    // break out of loop
     }
@@ -245,7 +241,7 @@ int bd_initfree_pair(int k, int bi, void *free_start, void *free_end) {
   if (bit_get(bd_sizes[k].alloc, bi)) {
     // one of the pair is free
     free = BLK_SIZE(k);
-    if (in_range(free_start, free_end, addr(k, buddy)))
+    if ((((addr(k, buddy)) >= (free_start)))&&((addr(k, buddy)) < (free_end)))
       lst_push(&bd_sizes[k].free, addr(k, buddy));  // put buddy on free list
     else
       lst_push(&bd_sizes[k].free, addr(k, bi));  // put bi on free list
@@ -314,7 +310,7 @@ void bd_init(void *base, void *end) {
   // initialize free list and allocate the alloc array for each size k
   for (int k = 0; k < nsizes; k++) {
     lst_init(&bd_sizes[k].free);
-    sz = sizeof(char) * ROUNDUP(NBLK(k), 16) / 16; // Twins use 1 single bit!
+    sz = sizeof(char) * ROUNDUP(NBLK(k) / 2, 8) / 8; 
     bd_sizes[k].alloc = p;
     memset(bd_sizes[k].alloc, 0, sz);
     p += sz;
@@ -344,7 +340,6 @@ void bd_init(void *base, void *end) {
 
   // check if the amount that is free is what we expect
   if (free != BLK_SIZE(MAXSIZE) - meta - unavailable) {
-    printf("free %d %ld\n", free, BLK_SIZE(MAXSIZE) - meta - unavailable);
     panic("bd_init: free mem");
   }
 }
