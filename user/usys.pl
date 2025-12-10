@@ -36,3 +36,7 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
+entry("procdump");
+entry("dump");
+entry("dump2");
+entry("ext");
