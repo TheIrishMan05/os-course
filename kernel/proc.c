@@ -15,13 +15,6 @@ enum StatusCode {
   ERROR_WRITE_ERROR = -4
 };
 
-enum StatusCode {
-  ERROR_PERMISSON_DENIED = -1,
-  ERROR_KILLED_PROCESS = -2,
-  ERROR_OUT_OF_BOUNDS = -3,
-  ERROR_WRITE_ERROR = -4
-};
-
 struct cpu cpus[NCPU];
 struct proc proc[NPROC];
 
@@ -829,54 +822,3 @@ ext(void){
   *shutdown = 0x5555;
 }
 
-int
-dump2(int pid, int register_num, uint64 *return_value) {
-    struct proc *p = myproc();
-    struct proc *target_proc = NULL;
-    struct trapframe *tf = NULL;
-    acquire(&wait_lock);
-
-    for (struct proc *iter_proc = proc; iter_proc < &proc[NPROC]; iter_proc++) {
-      acquire(&iter_proc->lock);
-      if (iter_proc->pid == pid) {
-        if (iter_proc->pid == p->pid || (iter_proc->parent != 0 && iter_proc->parent->pid == p->pid)) {
-          target_proc = iter_proc;
-          tf = target_proc->trapframe;
-          release(&iter_proc->lock);
-          break;
-        } else {
-          release(&iter_proc->lock);
-          release(&wait_lock);
-          return ERROR_PERMISSON_DENIED;
-        }
-      }
-      release(&iter_proc->lock);
-    }
-
-    if(target_proc == 0) {
-      release(&wait_lock);
-      return ERROR_KILLED_PROCESS;
-    }
-
-    if(register_num < 2 || register_num > 11) {
-      release(&wait_lock);
-      return ERROR_OUT_OF_BOUNDS;
-    }
-
-    uint64 *regdump = &tf->s2;
-    uint32 value = 0;
-    for(int i = 0; i < 10; i++) {
-      if(i + 2 == register_num) {
-        value = (uint32)regdump[i];
-        break;
-      }
-    }
-
-    if (copyout(p->pagetable, (uint64)return_value, (char*)&value, sizeof(value)) < 0) {
-      release(&wait_lock);  
-      return ERROR_WRITE_ERROR;
-    }
-
-    release(&wait_lock);
-    return 0; 
-}
