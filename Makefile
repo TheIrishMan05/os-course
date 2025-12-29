@@ -30,7 +30,8 @@ OBJS = \
   $K/plic.o \
   $K/virtio_disk.o \
   $K/buddy.o \
-  $K/list.o
+  $K/list.o \
+  $K/upd_list.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -80,6 +81,10 @@ CFLAGS += -fno-pie -no-pie
 endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
+endif
+
+ifdef DEBUG
+CFLAGS += -DDEBUG
 endif
 
 LDFLAGS = -z max-page-size=4096

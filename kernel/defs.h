@@ -65,6 +65,9 @@ void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
 
+#define JUNK 5
+#define ALLOC_JUNK 1
+
 // log.c
 void            initlog(int, struct superblock*);
 void            log_write(struct buf*);

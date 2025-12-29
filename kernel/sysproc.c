@@ -92,6 +92,15 @@ sys_uptime(void)
   return xticks;
 }
 
+
+uint64
+sys_procdump(void)
+{
+  procdump();
+  return 0;
+}
+
+
 uint64
 sys_dump(void)
 {
@@ -116,4 +125,10 @@ sys_dump2(void) {
   argaddr(2, &return_value);
 
   return dump2(pid, register_num, (uint64*) return_value);
-}    
+}
+
+uint64
+sys_ext(void) {
+  ext();
+  return 0;
+}
