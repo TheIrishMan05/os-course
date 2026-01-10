@@ -9,7 +9,13 @@
 // Buddy allocator
 
 static int nsizes;  // the number of entries in bd_sizes array
-
+#ifdef DEBUG
+  #define DEBUG_MODE 1
+  #define DEBUG_MSG(msg, ...) printf("db: " msg, ##__VA_ARGS__)
+#else
+  #define DEBUG_MODE 0
+  #define DEBUG_MSG(msg, ...)
+#endif
 #define LEAF_SIZE 64          // The smallest block size
 #define MAXSIZE (nsizes - 1)  // Largest index in bd_sizes array
 #define BLK_SIZE(k) ((1L << (k)) * LEAF_SIZE)  // Size of block at size k
@@ -268,8 +274,7 @@ int bd_initfree(void *bd_left, void *bd_right) {
 // Mark the range [bd_base,p) as allocated
 int bd_mark_data_structures(char *p) {
   int meta = p - (char *)bd_base;
-  //printf("bd: %d meta bytes for managing %ld bytes of memory\n", meta,
-  //       BLK_SIZE(MAXSIZE));
+  DEBUG_MSG("%d meta bytes for managing %ld bytes of memory\n", meta, BLK_SIZE(MAXSIZE));
   bd_mark(bd_base, p);
   return meta;
 }
@@ -278,8 +283,7 @@ int bd_mark_data_structures(char *p) {
 int bd_mark_unavailable(void *end, void *left) {
   int unavailable = BLK_SIZE(MAXSIZE) - (end - bd_base);
   if (unavailable > 0) unavailable = ROUNDUP(unavailable, LEAF_SIZE);
-  //printf("bd: 0x%x bytes unavailable\n", unavailable);
-
+  DEBUG_MSG("0x%x bytes unavailable\n", unavailable);
   void *bd_end = bd_base + BLK_SIZE(MAXSIZE) - unavailable;
   bd_mark(bd_end, bd_base + BLK_SIZE(MAXSIZE));
   return unavailable;
@@ -298,10 +302,7 @@ void bd_init(void *base, void *end) {
   if ((char *)end - p > BLK_SIZE(MAXSIZE)) {
     nsizes++;  // round up to the next power of 2
   }
-
-  //printf("bd: memory sz is %ld bytes; allocate an size array of length %d\n",
-  //       (char *)end - p, nsizes);
-
+  DEBUG_MSG("memory sz is %ld bytes; allocate an size array of length %d\n", (char *)end - p, nsizes);
   // allocate bd_sizes array
   bd_sizes = (Sz_info *)p;
   p += sizeof(Sz_info) * nsizes;

@@ -299,6 +299,29 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
+static void
+vmprint_r(pagetable_t pagetable, int depth)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if (pte & PTE_V){
+      for(int d = 0; d < depth) 
+        printf("...");
+      printf("..%d: pte %p pa %p\n", i, (void*) pte, (void*)PTE2PA(pte));
+      if((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+        uint64 child = PTE2PA(pte);
+        vmprint_r((pagetable_t)child, depth + 1)
+      }
+    }
+  }
+}
+
+void vmprint(pagetable_t pagetable) {
+  printf("page table %p\n", pagetable);
+  vmprint_r(pagetable, 0)
+}
+
 // Given a parent process's page table, copy
 // its memory into a child's page table.
 // Copies both the page table and the
@@ -314,17 +337,27 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walk(old, i, 0)) == 0)
-      panic("uvmcopy: pte should exist");
+    pte = walk(old, i, 0);
+    if(pte == 0) 
+      continue;
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      continue;
+
+    if(((*pte) & (PTE_R|PTE_W|PTE_X)) == 0)
+      continue;
+
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+
+    kinc(pa);
+
+    if((flags & PTE_U) && (flags & PTE_W)){
+      *pte = (*pte & ~PTE_W) | PTE_COW;
+      flags = (flags & ~PTE_W) | PTE_COW;
+    }
+
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
+      kfree((void *) pa);
       goto err;
     }
   }
