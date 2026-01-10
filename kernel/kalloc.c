@@ -13,6 +13,8 @@ void freerange(void *pa_start, void *pa_end);
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
+static struct spinlock ref_lock;
+static int refcnt[(PHYSTOP - KERNBASE) / PGSIZE];
 
 struct run {
   struct run *next;
@@ -22,6 +24,13 @@ struct {
   struct spinlock lock;
   struct run *freelist;
 } kmem;
+
+static int
+pageaddr_to_idx(uint64 pa){
+  if (pa < KERNBASE || pa >= PHYSTOP)
+    panic("pageaddr_to_idx");
+  return (pa - KERNBASE) / PGSIZE;
+}
 
 void
 kinit()
@@ -53,4 +62,14 @@ kalloc(void)
   void *p = bd_malloc(PGSIZE);
   if(p) memset(p, JUNK, PGSIZE);
   return p;
+}
+
+void
+kinc(uint64 pa) {
+  acquire(&ref_lock);
+  int idx = pageaddr_to_idx(pa);
+  if(refcnt[idx] < 1)
+    panic("kinc");
+  refcnt[idx]++;
+  release(&ref_lock);
 }

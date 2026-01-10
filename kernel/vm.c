@@ -299,19 +299,18 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
-static void
-vmprint_r(pagetable_t pagetable, int depth)
+static void vmprint_r(pagetable_t pagetable, int depth)
 {
   // there are 2^9 = 512 PTEs in a page table.
   for(int i = 0; i < 512; i++){
     pte_t pte = pagetable[i];
     if (pte & PTE_V){
-      for(int d = 0; d < depth) 
+      for(int d = 0; d < depth; d++)
         printf("...");
       printf("..%d: pte %p pa %p\n", i, (void*) pte, (void*)PTE2PA(pte));
       if((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
         uint64 child = PTE2PA(pte);
-        vmprint_r((pagetable_t)child, depth + 1)
+        vmprint_r((pagetable_t)child, depth + 1);
       }
     }
   }
@@ -319,7 +318,7 @@ vmprint_r(pagetable_t pagetable, int depth)
 
 void vmprint(pagetable_t pagetable) {
   printf("page table %p\n", pagetable);
-  vmprint_r(pagetable, 0)
+  vmprint_r(pagetable, 0);
 }
 
 // Given a parent process's page table, copy
@@ -334,8 +333,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
-
+  
   for(i = 0; i < sz; i += PGSIZE){
     pte = walk(old, i, 0);
     if(pte == 0) 
