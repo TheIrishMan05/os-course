@@ -41,42 +41,91 @@ usertrap(void)
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
 
-  // send interrupts and exceptions to kerneltrap(),
-  // since we're now in the kernel.
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
-  // save user program counter.
   p->trapframe->epc = r_sepc();
-  
-  if(r_scause() == 8){
-    // system call
 
+  if(r_scause() == 8){
     if(killed(p))
       exit(-1);
 
-    // sepc points to the ecall instruction,
-    // but we want to return to the next instruction.
     p->trapframe->epc += 4;
-
-    // an interrupt will change sepc, scause, and sstatus,
-    // so enable only now that we're done with those registers.
     intr_on();
-
     syscall();
+
   } else if((which_dev = devintr()) != 0){
     // ok
+
+  } else if(r_scause() == 12 || r_scause() == 13 || r_scause() == 15){
+    uint64 bad = r_stval();
+    uint64 va  = PGROUNDDOWN(bad);
+
+    if(va >= MAXVA || va >= TRAPFRAME || va >= p->sz){
+      setkilled(p);
+      goto done;
+    }
+
+    pte_t *pte = walk(p->pagetable, va, 0);
+
+    if(pte == 0 || (*pte & PTE_V) == 0){
+      char *mem = kalloc();
+      if(mem == 0){
+        setkilled(p);
+        goto done;
+      }
+      memset(mem, 0, PGSIZE);
+
+      if(mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_R|PTE_W|PTE_U) != 0){
+        kfree(mem);
+        setkilled(p);
+        goto done;
+      }
+      sfence_vma();
+      goto done;
+    }
+
+    if((*pte & PTE_U) == 0){
+      setkilled(p);
+      goto done;
+    }
+
+    if((*pte & PTE_COW) && ((*pte & PTE_W) == 0) && (r_scause() == 15)){
+      uint64 pa = PTE2PA(*pte);
+
+      if(kref(pa) == 1){
+        *pte = (*pte | PTE_W) & ~PTE_COW;
+        sfence_vma();
+        goto done;
+      }
+
+      char *mem = kalloc();
+      if(mem == 0){
+        setkilled(p);
+        goto done;
+      }
+
+      memmove(mem, (void*)pa, PGSIZE);
+
+      uint flags = PTE_FLAGS(*pte);
+      flags = (flags | PTE_W) & ~PTE_COW;
+
+      *pte = PA2PTE(mem) | flags | PTE_V;
+      sfence_vma();
+
+      kfree((void*)pa);
+      goto done;
+    }   
+    setkilled(p);
+
   } else {
-    printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
     setkilled(p);
   }
 
+done:
   if(killed(p))
     exit(-1);
 
-  // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
     yield();
 

@@ -64,10 +64,10 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+int             kref(uint64);
 void            kinc(uint64);
+int             kref(uint64);
 
-#define JUNK 5
-#define ALLOC_JUNK 1
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -92,6 +92,7 @@ void            exit(int);
 int             fork(void);
 int             growproc(int);
 void            proc_mapstacks(pagetable_t);
+void            wakeup_nolock(void*);
 pagetable_t     proc_pagetable(struct proc *);
 void            proc_freepagetable(pagetable_t, uint64);
 int             kill(int);

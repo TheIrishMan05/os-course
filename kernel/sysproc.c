@@ -38,13 +38,31 @@ sys_wait(void)
 uint64
 sys_sbrk(void)
 {
-  uint64 addr;
   int n;
+  struct proc *p = myproc();
 
   argint(0, &n);
-  addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+
+  uint64 addr = p->sz;
+
+  if(n > 0){
+    if(p->sz + (uint64)n < p->sz)       
+      return -1;
+    if(p->sz + (uint64)n >= TRAPFRAME)  
+      return -1;
+    p->sz += (uint64)n;
+    return addr;
+  }
+
+  if(n < 0){
+    uint64 un = (uint64)(-n);
+    if(un > p->sz)
+      return -1;
+    uint64 newsz = p->sz - un;
+    p->sz = uvmdealloc(p->pagetable, p->sz, newsz);
+    return addr;
+  }
+
   return addr;
 }
 
@@ -90,45 +108,4 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
-}
-
-
-uint64
-sys_procdump(void)
-{
-  procdump();
-  return 0;
-}
-
-
-uint64
-sys_dump(void)
-{
-  struct proc *p = myproc();
-
-  uint64 *regdump = &p->trapframe->s2;
-
-  for(int i = 0; i < 10; i++) {
-    printf("s%d = %d\n", i + 2, (uint32) regdump[i]);
-  }
-
-  return 0;
-}
-
-uint64
-sys_dump2(void) {
-  int pid, register_num;
-  uint64 return_value;
-
-  argint(0, &pid);
-  argint(1, &register_num);
-  argaddr(2, &return_value);
-
-  return dump2(pid, register_num, (uint64*) return_value);
-}
-
-uint64
-sys_ext(void) {
-  ext();
-  return 0;
 }
