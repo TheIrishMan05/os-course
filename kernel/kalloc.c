@@ -15,10 +15,10 @@ static struct spinlock ref_lock;
 static int refcnt[(PHYSTOP - KERNBASE) / PGSIZE];
 
 static int
-pa2idx(uint64 pa)
+pageaddr_to_idx(uint64 pa)
 {
   if(pa < KERNBASE || pa >= PHYSTOP)
-    panic("pa2idx");
+    panic("pageaddr_to_idx");
   return (pa - KERNBASE) / PGSIZE;
 }
 
@@ -40,7 +40,7 @@ kfree(void *pa)
   uint64 a = (uint64)pa;
 
   acquire(&ref_lock);
-  int idx = pa2idx(a);
+  int idx = pageaddr_to_idx(a);
   if(refcnt[idx] < 1)
     panic("kfree ref");
   refcnt[idx]--;
@@ -65,7 +65,7 @@ kalloc(void)
     return 0;
 
   acquire(&ref_lock);
-  refcnt[pa2idx((uint64)p)] = 1;
+  refcnt[pageaddr_to_idx((uint64)p)] = 1;
   release(&ref_lock);
 
   return p;
@@ -75,7 +75,7 @@ void
 kinc(uint64 pa)
 {
   acquire(&ref_lock);
-  int idx = pa2idx(pa);
+  int idx = pageaddr_to_idx(pa);
   if(refcnt[idx] < 1)
     panic("kinc");
   refcnt[idx]++;
@@ -86,7 +86,20 @@ int
 kref(uint64 pa)
 {
   acquire(&ref_lock);
-  int r = refcnt[pa2idx(pa)];
+  int r = refcnt[pageaddr_to_idx(pa)];
+  release(&ref_lock);
+  return r;
+}
+
+int
+kdec(uint64 pa){
+  acquire(&ref_lock);
+  int idx = pageaddr_to_idx(pa);
+  if(refcnt[idx] <= 0) {
+    panic("kdec: refcnt already zero");
+  }
+  refcnt[idx]--;
+  int r = refcnt[idx];
   release(&ref_lock);
   return r;
 }

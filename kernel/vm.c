@@ -193,7 +193,11 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 
     if(do_free){
       uint64 pa = PTE2PA(*pte);
-      kfree((void*)pa);        
+      if(pa == 0)
+        continue;
+      if(kref(pa) > 0){
+        kfree((void*) pa);
+      }      
     }
 
     *pte = 0;
@@ -363,14 +367,21 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     }
 
     if(mappages(new, i, PGSIZE, pa, flags) != 0){
-      kfree((void*)pa);
+      kdec(pa);
       goto err;
     }
   }
   return 0;
 
 err:
-  uvmunmap(new, 0, i / PGSIZE, 1);
+  for(uint64 j = 0; j < i; j += PGSIZE){
+    pte = walk(old, j, 0);
+    if(pte == 0 || (*pte & PTE_V) == 0) continue;
+    uint64 pa = PTE2PA(*pte);
+    if(pa == 0) continue;
+    kdec(pa);
+  }
+  uvmunmap(new, 0, i / PGSIZE, 0);
   return -1;
 }
 
@@ -433,6 +444,10 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
     pte = walk(pagetable, va0, 0);
     if(pte == 0 || (*pte & PTE_V) == 0){
+      struct proc *p = myproc();
+      if(p == 0 || va0 >= p->sz){
+        return -1;
+      }
       if(lazyalloc(pagetable, va0) < 0)
         return -1;
       pte = walk(pagetable, va0, 0);
@@ -497,6 +512,10 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0){
+      struct proc *p = myproc();
+      if(p == 0 || va0 >= p->sz){
+        return -1; 
+      }
       if(lazyalloc(pagetable, va0) < 0)
         return -1;
       pa0 = walkaddr(pagetable, va0);
@@ -534,6 +553,10 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0){
+      struct proc *p = myproc();
+      if(p == 0 || va0 >= p->sz){
+        return -1;
+      }
       if(lazyalloc(pagetable, va0) < 0)
         return -1;
       pa0 = walkaddr(pagetable, va0);

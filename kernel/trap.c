@@ -93,6 +93,12 @@ usertrap(void)
     if((*pte & PTE_COW) && ((*pte & PTE_W) == 0) && (r_scause() == 15)){
       uint64 pa = PTE2PA(*pte);
 
+      if(pa == 0){
+        printf("usertrap: zero pa in COW handling\n");
+        setkilled(p);
+        goto done;
+      }
+
       if(kref(pa) == 1){
         *pte = (*pte | PTE_W) & ~PTE_COW;
         sfence_vma();

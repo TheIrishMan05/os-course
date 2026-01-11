@@ -31,7 +31,7 @@ filealloc(void)
 {
   struct file *f;
 
-  acquire(&ftable.lock);
+  acquire(&ftable.lock);  
   f = bd_malloc(sizeof(struct file));
   f->ref = 1;
 

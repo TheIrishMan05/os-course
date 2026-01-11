@@ -53,9 +53,8 @@ void bit_set(char *array, int index) {
 
 // Inverse bit at position index in array
 void bit_flip(char* array, int index){
-  char b = array[index / 8];
-  char m = (1 << (index % 8))
-  b ^= m;
+  char m = (1 << (index % 8));
+  array[index / 8] ^= m;
 }
 
 // Clear bit at position index in array
