@@ -439,25 +439,26 @@ wait(uint64 addr)
 
         havekids = 1;
         if(pp->state == ZOMBIE){
-  pid = pp->pid;
-  int x = pp->xstate;
+          pid = pp->pid;
+          int x = pp->xstate;
 
-  freeproc(pp);
+          freeproc(pp);
 
-  if(addr != 0){
-    if(lazy_ensure_range(p, addr, sizeof(x)) < 0 ||
-       copyout(p->pagetable, addr, (char *)&x, sizeof(x)) < 0){
-      release(&list_lock);
-      return -1;
-    }
-  }
+          if(addr != 0){
+            if(lazy_ensure_range(p, addr, sizeof(x)) < 0 ||
+              copyout(p->pagetable, addr, (char *)&x, sizeof(x)) < 0){
+              release(&list_lock);
+              return -1;
+            }
+          }
+        }
+      
 
-  release(&list_lock);
-  return pid;
-}
-
+        release(&list_lock);
+        return pid;
       }
     }
+
 
     // No point waiting if we don't have any children.
     if(!havekids || killed(p)){
