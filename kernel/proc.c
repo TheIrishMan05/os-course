@@ -452,11 +452,9 @@ wait(uint64 addr)
             }
           }
         }
-      
-
-        release(&list_lock);
-        return pid;
       }
+      release(&list_lock);
+      return pid;
     }
 
 
