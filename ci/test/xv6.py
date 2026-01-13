@@ -8,5 +8,5 @@ class Xv6:
 
     def run(self, program: str):
         self.stream.writeline(program)
-        assert_eq(self.stream.readline(), program)
+        assert_eq(self.stream.readline().replace('$', '').strip(), program)
         assert_eq(self.stream.readline().replace('$', '').strip(), "")
