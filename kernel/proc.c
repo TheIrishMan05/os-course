@@ -453,9 +453,9 @@ wait(uint64 addr)
           }
         }
       }
-      release(&list_lock);
-      return pid;
     }
+    release(&list_lock);
+    return pid;
 
 
     // No point waiting if we don't have any children.
