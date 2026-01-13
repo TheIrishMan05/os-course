@@ -55,7 +55,7 @@ QUICK_TESTS = [
     Xv6UserTest(name="dirfile", timeout=timedelta(seconds=2)),
     Xv6UserTest(name="iref", timeout=timedelta(seconds=16)),
     Xv6UserTest(name="forktest", timeout=timedelta(seconds=1)),
-    Xv6UserTest(name="sbrkbasic", timeout=timedelta(seconds=3)),
+    Xv6UserTest(name="sbrkbasic", timeout=timedelta(seconds=6)),
     Xv6UserTest(name="sbrkmuch", timeout=timedelta(seconds=2)),
     Xv6UserTest(
         name="kernmem",

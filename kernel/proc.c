@@ -421,8 +421,6 @@ lazy_ensure_range(struct proc *p, uint64 uva, uint64 len)
 
 
 
-// Wait for a child process to exit and return its pid.
-// Return -1 if this process has no children.
 int
 wait(uint64 addr)
 {
@@ -451,12 +449,13 @@ wait(uint64 addr)
               return -1;
             }
           }
+
+          release(&list_lock);
+          return pid;
         }
+
       }
     }
-    release(&list_lock);
-    return pid;
-
 
     // No point waiting if we don't have any children.
     if(!havekids || killed(p)){
@@ -468,6 +467,14 @@ wait(uint64 addr)
     sleep(p, &list_lock);  //DOC: wait-sleep
   }
 }
+
+// Per-CPU process scheduler.
+// Each CPU calls scheduler() after setting itself up.
+// Scheduler never returns.  It loops, doing:
+//  - choose a process to run.
+//  - swtch to start running that process.
+//  - eventually that process transfers control
+//    via swtch back to the scheduler.
 
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
