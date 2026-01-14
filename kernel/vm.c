@@ -169,6 +169,22 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
+int
+mappages_fast(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
+{
+  if(size != PGSIZE)
+    return mappages(pagetable, va, size, pa, perm);
+    
+  pte_t *pte = walk(pagetable, va, 1);
+  if(pte == 0)
+    return -1;
+  if(*pte & PTE_V)
+    return -1;
+    
+  *pte = PA2PTE(pa) | perm | PTE_V;
+  return 0;
+}
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
@@ -253,7 +269,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
       return 0;
     }
     memset(mem, 0, PGSIZE);
-    if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
+    if(mappages_fast(pagetable, a, PGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
       kfree(mem);
       uvmdealloc(pagetable, a, oldsz);
       return 0;
@@ -272,9 +288,12 @@ uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
   if(newsz >= oldsz)
     return oldsz;
 
-  if(PGROUNDUP(newsz) < PGROUNDUP(oldsz)){
-    int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
-    uvmunmap(pagetable, PGROUNDUP(newsz), npages, 1);
+  uint64 new_up = PGROUNDUP(newsz);
+  uint64 old_up = PGROUNDUP(oldsz);
+
+  if(new_up < old_up){
+    int npages = (old_up - new_up) / PGSIZE;
+    uvmunmap(pagetable, new_up, npages, 1);
   }
 
   return newsz;
@@ -487,7 +506,24 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     n = PGSIZE - (dstva - va0);
     if(n > len) n = len;
 
-    memmove((void *)(pa0 + (dstva - va0)), src, n);
+    char *dst_ptr = (char *)(pa0 + (dstva - va0));
+    char *src_ptr = src;
+
+    uint64 *dst_64 = (uint64*)dst_ptr;
+    uint64 *src_64 = (uint64*)src_ptr;
+
+    int blocks = n / sizeof(uint64);
+
+    for(int i = 0; i < blocks; i++){
+      dst_64[i] = src_64[i];
+    }
+
+    int remainder = n % sizeof(uint64);
+    if(remainder > 0){
+      memmove(dst_ptr + blocks * sizeof(uint64),
+              src_ptr + blocks * sizeof(uint64),
+              remainder);
+    }
 
     len -= n;
     src += n;

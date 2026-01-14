@@ -44,6 +44,10 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
+
+  if(killed(p))
+    exit(-1);
+
   p->trapframe->epc = r_sepc();
 
   if(r_scause() == 8){
@@ -61,7 +65,7 @@ usertrap(void)
     uint64 bad = r_stval();
     uint64 va  = PGROUNDDOWN(bad);
 
-    if(va >= MAXVA || va >= TRAPFRAME || va >= p->sz){
+    if(va >= MAXVA || va >= TRAPFRAME || va >= p->sz) {
       setkilled(p);
       goto done;
     }
