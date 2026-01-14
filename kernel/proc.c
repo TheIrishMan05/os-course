@@ -449,7 +449,7 @@ wait(uint64 addr)
               return -1;
             }
           }
-
+          
           release(&list_lock);
           return pid;
         }
@@ -587,11 +587,11 @@ sleep(void *chan, struct spinlock *lk)
   // guaranteed that we won't miss any wakeup
   // (wakeup locks p->lock),
   // so it's okay to release lk.
-
-  if (lk != &list_lock) {
-    acquire(&list_lock);   // держим list_lock
-    release(lk);           // отпускаем старый lk
-  }
+  if(lk != &list_lock){
+    acquire(&list_lock);  
+    release(lk);
+  }          
+  
 
   // Go to sleep.
   p->chan = chan;
@@ -601,9 +601,8 @@ sleep(void *chan, struct spinlock *lk)
 
   // Tidy up.
   p->chan = 0;
-
-  // Reacquire original lock.
-  if (lk != &list_lock) {
+  
+  if(lk != &list_lock){
     release(&list_lock);
     acquire(lk);
   }
