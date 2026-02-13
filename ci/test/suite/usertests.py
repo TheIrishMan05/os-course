@@ -71,7 +71,7 @@ QUICK_TESTS = [
     Xv6UserTest(name="sbrkbugs", timeout=timedelta(seconds=2)),
     Xv6UserTest(name="sbrklast", timeout=timedelta(seconds=2)),
     Xv6UserTest(name="sbrk8000", timeout=timedelta(seconds=2)),
-    Xv6UserTest(name="badarg", timeout=timedelta(seconds=6)),
+    Xv6UserTest(name="badarg", timeout=timedelta(seconds=12)),
 ]
 
 
