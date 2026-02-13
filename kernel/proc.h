@@ -1,3 +1,23 @@
+#define NVMA 16
+// Permission flags
+#define PROT_NONE      0x0     
+#define PROT_READ      0x1     
+#define PROT_WRITE     0x2     
+#define PROT_EXEC      0x4    
+
+// Mapping flags
+#define MAP_SHARED     0x01    
+#define MAP_PRIVATE    0x02    
+#define MAP_FIXED      0x04    
+#define MAP_ANONYMOUS  0x08    
+#define MAP_STACK      0x10    
+#define MAP_POPULATE   0x20    
+#define MAP_LOCKED     0x40    
+#define MAP_NORESERVE  0x80  
+
+#define MAP_FAILED     -1
+
+
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -81,6 +101,17 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct vma {
+  int used;               // flag of virtual memory usage
+  uint64 addr;            // starting address
+  uint64 length;          // length of mapping
+  int prot;              // 
+  int flags;             // MAP_SHARED / MAP_PRIVATE
+  struct file *file;     // linked file
+  uint64 offset;         // 
+  uint64 pa_start;       // Начальный физический адрес
+  pagetable_t src_pgdir; // Page table of source
+};
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -104,7 +135,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-
+  struct vma vma_array[NVMA];
   struct proc *next;
   struct proc *prev;
 };

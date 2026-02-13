@@ -109,3 +109,16 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_mmap(void){
+  uint64 addr, length, offset;
+  int prot, flags, fd;
+  argaddr(0, &addr);
+  argaddr(1, &length);
+  argaddr(2, &offset);
+  argint(3, &prot);
+  argint(4, &flags);
+  argint(5, &fd);
+  return (uint64)mmap(addr, length, offset, prot, flags, fd);
+}

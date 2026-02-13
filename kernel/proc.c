@@ -10,6 +10,8 @@ int proc_inuse = 0;
 
 struct cpu cpus[NCPU];
 
+struct proc proc[NPROC];
+
 struct proc head; 
 
 struct proc *initproc = 0;
@@ -28,7 +30,6 @@ extern char trampoline[]; // trampoline.S
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
-
 
 // initialize the proc table.
 void
@@ -233,6 +234,8 @@ userinit(void)
   struct proc *p;
 
   p = allocproc();
+  for(int i = 0; i < NVMA; i++)
+    p->vma_array[i].used = 0;
   initproc = p;
   
   // allocate one user page and copy initcode's instructions
@@ -742,4 +745,35 @@ procdump(void)
   }
   release(&list_lock);
 
+}
+
+struct proc*
+find_proc_with_mapping(struct file *file, uint64 offset, uint64 length)
+{
+    struct proc *p;
+    
+    for(p = proc; p < &proc[NPROC]; p++) {
+        acquire(&p->lock);
+        
+        if(p->state == UNUSED || p == myproc() || (file == 0)) {
+            release(&p->lock);
+            continue;
+        }
+        
+        for(int i = 0; i < NVMA; i++) {
+            struct vma *v = &p->vma_array[i];
+            
+            if(v->used &&
+               (v->flags & MAP_SHARED) &&
+               v->file == file &&
+               offset < v->offset + v->length &&
+               offset + length > v->offset)
+            {
+                release(&p->lock);
+                return p;
+            }
+        }
+        release(&p->lock);
+    }
+    return 0;
 }

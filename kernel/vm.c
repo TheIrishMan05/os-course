@@ -133,6 +133,112 @@ kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
     panic("kvmmap");
 }
 
+int transfer_page(pagetable_t src_pgdir, pagetable_t dst_pgdir, uint64 src_va, uint64 dst_va, int perm){
+  pte_t *src_pte = walk(src_pgdir, src_va, 0);
+  if(src_pte == 0 || (*src_pte & PTE_V) == 0){
+    return -1;
+  }
+
+  uint64 pa = PTE2PA(*src_pte);
+  *src_pte = 0;
+
+  struct proc *p = myproc();
+  uint64 old_satp = r_satp();
+  if((uint64)p->pagetable == (old_satp & ~(0xFFFULL))) {
+    sfence_vma();
+  }
+  pte_t *dst_pte = walk(dst_pgdir, dst_va, 1);
+  if(dst_pte == 0)
+    return -1;
+
+  if(*dst_pte & PTE_V){
+    uint64 old_pa = PTE2PA(*dst_pte);
+    if(old_pa != pa){
+      kfree((void*) old_pa);
+    }
+  }
+
+  *dst_pte = PA2PTE(pa) | perm | PTE_V;
+
+  sfence_vma();
+  return 0;
+}
+
+int transfer_pages(pagetable_t src_pgdir, pagetable_t dst_pgdir, uint64 src_start, uint64 dst_start, uint64 size, int perm){
+  if(size == 0 || (size % PGSIZE) != 0){
+    return -1;
+  }
+
+  for(uint64 offset = 0; offset < size; offset += PGSIZE){
+    if(transfer_page(src_pgdir, dst_pgdir, src_start + offset, dst_start + offset, perm) < 0){
+      for(uint64 rb = 0; rb < offset; rb++){
+        transfer_page(src_pgdir, dst_pgdir, src_start + rb, dst_start + rb, perm);
+      }
+      return -1;
+    }
+  }
+  return 0;
+}
+
+int mappages_with_transfer(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm, pagetable_t src_pgdir){
+  uint64 addr, last;
+  pte_t *pte;
+
+  if((va % PGSIZE) != 0){
+    return -1;
+  }
+
+  if((size % PGSIZE) != 0){
+    return -1;
+  }
+
+  if(size == 0){
+    return -1;
+  }
+
+  addr = va;
+  last = addr + size - PGSIZE;
+
+  if(src_pgdir != 0) {
+    for(; addr <= last; addr += PGSIZE, pa += PGSIZE){
+      if(transfer_page(src_pgdir, pagetable, pa, addr, perm)) {
+        char *mem = kalloc();
+        if(mem == 0)
+          return -1;
+        memset(mem, 0, PGSIZE);
+
+        pte = walk(pagetable, addr, 1);
+        if(pte == 0){
+          kfree((void*) mem);
+          return -1;
+        }
+        *pte = PA2PTE(mem) | perm | PTE_V;
+      }
+    }
+    return 0;
+  }
+
+  for(;;){
+    if((pte = walk(pagetable, addr, 1)) == 0)
+      return -1;
+
+    if(*pte & PTE_V){
+      uint64 old_pa = PTE2PA(*pte);
+      if(old_pa != pa) {
+        kfree((void*)old_pa);
+      }
+    }
+    *pte = PA2PTE(pa) | perm | PTE_V;
+    if(addr == last){
+      break;
+    }
+
+    addr += PGSIZE;
+    pa += PGSIZE;
+  }
+  return 0;
+}
+
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa.
 // va and size MUST be page-aligned.
@@ -401,6 +507,49 @@ err:
     kdec(pa);
   }
   uvmunmap(new, 0, i / PGSIZE, 0);
+  return -1;
+}
+
+int uvmcopy_range(pagetable_t src, pagetable_t dst, uint64 src_va, uint64 dst_va, uint64 size) {
+  pte_t *pte;
+  uint64 pa, i;
+  uint flags;
+
+  if((size % PGSIZE) != 0)
+    return -1;
+
+  for(i = 0; i < size; i += PGSIZE){
+    pte = walk(src, src_va + i, 0);
+    if(pte == 0)
+      continue;
+    if((*pte & PTE_V) == 0)
+      continue;
+
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+
+    kinc(pa);
+
+    if(flags & PTE_W){
+      flags = (flags & ~PTE_W) | PTE_COW;
+    }
+
+    if(mappages(dst, (uint64)dst + i, PGSIZE, pa, flags) != 0){
+      kdec(pa);
+      goto err;
+    }
+  }
+  return 0;
+
+err:
+  for(uint64 j = 0; j < i; j += PGSIZE){
+    pte = walk(src, (uint64)src + j, 0);
+    if(pte == 0 || (*pte & PTE_V) == 0) continue;
+    uint64 pa = PTE2PA(*pte);
+    if(pa == 0) continue;
+    kdec(pa);
+  }
+  uvmunmap(dst, dst_va, i / PGSIZE, 0);
   return -1;
 }
 
