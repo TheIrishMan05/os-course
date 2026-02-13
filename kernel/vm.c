@@ -492,7 +492,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     }
 
     if(mappages(new, i, PGSIZE, pa, flags) != 0){
-      kdec(pa);
       goto err;
     }
   }
@@ -535,7 +534,6 @@ int uvmcopy_range(pagetable_t src, pagetable_t dst, uint64 src_va, uint64 dst_va
     }
 
     if(mappages(dst, (uint64)dst + i, PGSIZE, pa, flags) != 0){
-      kdec(pa);
       goto err;
     }
   }
