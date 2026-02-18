@@ -101,6 +101,7 @@ void            setkilled(struct proc*);
 struct cpu*     mycpu(void);
 struct cpu*     getmycpu(void);
 struct proc*    myproc();
+int             steal_memory(int, uint64, uint64, uint64);
 void            procinit(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
@@ -179,12 +180,9 @@ pte_t *         walk(pagetable_t, uint64, int);
 uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
+int             uvmsteal(pagetable_t, pagetable_t, uint64, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
 void            vmprint(pagetable_t);
-int             mappages_with_transfer(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm, pagetable_t src_pgdir);
-int             transfer_page(pagetable_t src_pgdir, pagetable_t dst_pgdir, uint64 src_va, uint64 dst_va, int perm);
-int             transfer_pages(pagetable_t src_pgdir, pagetable_t dst_pgdir, uint64 src_start, uint64 dst_start, uint64 size, int perm);
-int             uvmcopy_range(pagetable_t src, pagetable_t dst, uint64 src_va, uint64 dst_va, uint64 size);
 
 // plic.c
 void            plicinit(void);
@@ -213,5 +211,6 @@ void           bd_init(void*,void*);
 void           bd_free(void*);
 void           *bd_malloc(uint64);
 
-// mmap.c
-int             mmap(uint64 addr, uint64 length, uint64 offset, int prot, int flags, int fd);
+//mmap.c
+void            *mmap(uint64 addr, uint64 length, uint64 offset, int prot, int flags, int fd);
+int             munmap(uint64 addr, int length);

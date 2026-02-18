@@ -7,6 +7,33 @@
 #include "proc.h"
 
 uint64
+sys_mmap(void)
+{
+  uint64 addr, len, offset;
+  int prot, flags, fd;
+
+  argaddr(0, &addr);
+  argaddr(1, &len);
+  argint(2, &prot);
+  argint(3, &flags);
+  argint(4, &fd);
+  argaddr(5, &offset);
+  return (uint64)mmap(addr, len, offset, prot, flags, fd);
+} 
+
+uint64
+sys_munmap(void)
+{
+  uint64 addr;
+  int len;
+
+  argaddr(0, &addr);
+  argint(1, &len);
+
+  return munmap(addr, len);
+}
+
+uint64
 sys_exit(void)
 {
   int n;
@@ -108,17 +135,4 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
-}
-
-uint64
-sys_mmap(void){
-  uint64 addr, length, offset;
-  int prot, flags, fd;
-  argaddr(0, &addr);
-  argaddr(1, &length);
-  argaddr(2, &offset);
-  argint(3, &prot);
-  argint(4, &flags);
-  argint(5, &fd);
-  return (uint64)mmap(addr, length, offset, prot, flags, fd);
 }

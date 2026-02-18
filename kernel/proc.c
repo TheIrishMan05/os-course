@@ -110,6 +110,8 @@ allocproc(void)
     return 0;
   }
 
+  
+
   memset(p, 0, sizeof(struct proc));
 
   p->prev = &head;
@@ -234,8 +236,6 @@ userinit(void)
   struct proc *p;
 
   p = allocproc();
-  for(int i = 0; i < NVMA; i++)
-    p->vma_array[i].used = 0;
   initproc = p;
   
   // allocate one user page and copy initcode's instructions
@@ -747,33 +747,33 @@ procdump(void)
 
 }
 
-struct proc*
-find_proc_with_mapping(struct file *file, uint64 offset, uint64 length)
+int
+steal_memory(int pid, uint64 src, uint64 dst, uint64 len)
 {
-    struct proc *p;
-    
-    for(p = proc; p < &proc[NPROC]; p++) {
-        acquire(&p->lock);
-        
-        if(p->state == UNUSED || p == myproc() || (file == 0)) {
-            release(&p->lock);
-            continue;
-        }
-        
-        for(int i = 0; i < NVMA; i++) {
-            struct vma *v = &p->vma_array[i];
-            
-            if(v->used &&
-               (v->flags & MAP_SHARED) &&
-               v->file == file &&
-               offset < v->offset + v->length &&
-               offset + length > v->offset)
-            {
-                release(&p->lock);
-                return p;
-            }
-        }
-        release(&p->lock);
-    }
-    return 0;
+  struct proc *p = myproc();
+  struct proc *vp;
+
+  acquire(&list_lock);
+  for(vp = head.next; vp != &head; vp = vp->next){
+    if(vp->pid == pid)
+      break;
+  }
+
+  if(vp == &head || vp == 0){
+    release(&list_lock);
+    return -1;
+  }
+
+  if(vp == p){
+    release(&list_lock);
+    return -1;
+  }
+
+  if(uvmsteal(vp->pagetable, p->pagetable, src, dst, len) < 0){
+    release(&list_lock);
+    return -1;
+  }
+
+  release(&list_lock);
+  return 0;
 }

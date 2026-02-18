@@ -73,6 +73,10 @@ usertrap(void)
     pte_t *pte = walk(p->pagetable, va, 0);
 
     if(pte == 0 || (*pte & PTE_V) == 0){
+      if(pte && (*pte & PTE_STOLEN)) {
+        setkilled(p);
+        goto done;
+      }
       char *mem = kalloc();
       if(mem == 0){
         setkilled(p);
