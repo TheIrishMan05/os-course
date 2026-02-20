@@ -3,8 +3,12 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fs.h"
+#include "fcntl.h"
+#include "file.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -77,12 +81,36 @@ usertrap(void)
         setkilled(p);
         goto done;
       }
-      char *mem = kalloc();
-      if(mem == 0){
-        setkilled(p);
-        goto done;
+      struct vma *v = 0;
+      for(int i = 0; i < NVMA; i++){
+        if(p->vma_array[i].valid && va >= p->vma_array[i].addr && va < p->vma_array[i].addr + p->vma_array[i].len){
+          v = &p->vma_array[i];
+          break;
+        }
       }
+
+      char *mem = kalloc();
+      if(mem == 0)
+        exit(-1);
       memset(mem, 0, PGSIZE);
+
+      if(v && v->f){
+        ilock(v->f->ip);
+        uint64 off = v->offset + (va - v->addr);
+        int load_n = PGSIZE;
+        if(va + PGSIZE > v->addr + v->len){
+          load_n = (v->addr + v->len) - va;
+        }
+        readi(v->f->ip, 0, (uint64)mem, off, load_n);
+        iunlock(v->f->ip);
+      }
+
+      int pte_flags = PTE_R|PTE_U;
+      if(v){
+        if(v->prot & PROT_WRITE) pte_flags |= PTE_W;
+      } else {
+        pte_flags |= PTE_W;
+      }
 
       if(mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_R|PTE_W|PTE_U) != 0){
         kfree(mem);

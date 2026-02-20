@@ -78,40 +78,6 @@ void *mmap(uint64 addr, uint64 length, uint64 offset, int prot, int flags, int f
     uint64 newsz = start + length;
     newsz = PGROUNDUP(newsz);
 
-    if(uvmalloc(p->pagetable, p->sz, newsz, PTE_W | PTE_R | PTE_U) == 0){
-      return MAP_FAILED;
-    }
-
-    ilock(f->ip);
-    uint64 n = length;
-    uint64 off = offset;
-    uint64 va = start;
-    
-    while(n > 0){
-      uint64 pa = walkaddr(p->pagetable, va);
-      if(pa == 0) {
-        iunlock(f->ip);
-        return MAP_FAILED; 
-      }
-      uint64 load_n = PGSIZE;
-      if(n < PGSIZE) load_n = n;
-      
-      int r = readi(f->ip, 0, pa, off, load_n);
-      if(r < 0){
-         iunlock(f->ip);
-         uvmdealloc(p->pagetable, newsz, p->sz);
-         return MAP_FAILED;
-      } 
-      if(r < load_n) {
-        memset((void*)(pa + r), 0, load_n - r);
-      }
-      
-      n -= load_n;
-      off += load_n;
-      va += PGSIZE;
-    }
-    iunlock(f->ip);
-
     v->valid = 1;
     v->addr = start;
     v->len = length;

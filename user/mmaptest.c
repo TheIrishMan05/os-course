@@ -39,7 +39,7 @@ void test_private_file() {
     exit(1);
   }
   
-  char *p = (char *)mmap(0, 4096, PROT_READ, MAP_PRIVATE, fd, 0);
+  char *p = (char *)mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
   if((uint64)p == -1) {
     printf("mmap file failed\n");
     exit(1);
@@ -51,7 +51,6 @@ void test_private_file() {
     printf("Content mismatch!\n");
     exit(1);
   }
-  
   
   strcpy(p, "Modified Data");
   printf("Modified memory: %s\n", p);
@@ -67,7 +66,34 @@ void test_private_file() {
     printf("File was modified! MAP_PRIVATE violation.\n");
     exit(1);
   }
-  
+  close(fd);
+
+  int pid = fork();
+  if(pid < 0){
+    printf("fork failed\n");
+    exit(1);
+  }
+
+  if(pid == 0){
+    if(strcmp(p, "Modified Data") != 0){
+      printf("Child: Content mismatch!\n");
+      exit(1);
+    }
+    strcpy(p, "Child Data");
+    if(strcmp(p, "Child Data") != 0){
+      printf("Child: unable to write!\n");
+      exit(1);
+    }
+    exit(0);
+  } else {
+    wait(0);
+    if(strcmp(p, "Modified Data") != 0){
+      printf("Parent: Content changed by child! COW violation.\n");
+      exit(1);
+    }
+    printf("Parent: COW private mapping works\n");
+  }
+
   if(munmap(p, 4096) < 0){
     printf("munmap file failed\n");
     exit(1);
@@ -75,7 +101,6 @@ void test_private_file() {
   printf("munmap file success\n");
   
   printf("test of private mapping: success.\n");
-  close(fd);
 }
 
 void test_steal() {
