@@ -30,7 +30,8 @@ OBJS = \
   $K/plic.o \
   $K/virtio_disk.o \
   $K/buddy.o \
-  $K/list.o
+  $K/list.o \
+  $K/mmap.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -72,6 +73,7 @@ CFLAGS += -fno-builtin-free
 CFLAGS += -fno-builtin-memcpy -Wno-main
 CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
 CFLAGS += -I.
+CFLAGS += -DDEBUG
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
@@ -137,6 +139,7 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 .PRECIOUS: %.o
 
 UPROGS=\
+	$U/_mmaptest\
 	$U/_cat\
 	$U/_echo\
 	$U/_forktest\
@@ -158,7 +161,8 @@ UPROGS=\
 	$U/_alloctest\
 	$U/_cowtest\
 	$U/_lazytests\
-	$U/_pingpong	
+	$U/_pingpong\
+	$U/_mmaptest	
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

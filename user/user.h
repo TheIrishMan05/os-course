@@ -24,7 +24,8 @@ int sleep(int);
 int uptime(void);
 void dump();
 int dump2(int pid, int register_num, uint64 *return_value);
-
+void* mmap(void* addr, int length, int prot, int flags, int fd, uint64 offset);
+int munmap(void* addr, int length);
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

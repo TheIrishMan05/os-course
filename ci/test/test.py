@@ -83,3 +83,4 @@ class PatternTest(Test):
             assert_matches(line, pattern)
         end = datetime.now()
         return TestResult(duration=end - begin)
+        

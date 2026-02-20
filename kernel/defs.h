@@ -64,6 +64,10 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+void            kinc(uint64);
+int             kref(uint64);
+int             kdec(uint64);
+
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -78,7 +82,7 @@ int             piperead(struct pipe*, uint64, int);
 int             pipewrite(struct pipe*, uint64, int);
 
 // printf.c
-int            printf(char*, ...) __attribute__ ((format (printf, 1, 2)));
+int             printf(char*, ...) __attribute__ ((format (printf, 1, 2)));
 void            panic(char*) __attribute__((noreturn));
 void            printfinit(void);
 
@@ -88,6 +92,7 @@ void            exit(int);
 int             fork(void);
 int             growproc(int);
 void            proc_mapstacks(pagetable_t);
+void            wakeup_nolock(void*);
 pagetable_t     proc_pagetable(struct proc *);
 void            proc_freepagetable(pagetable_t, uint64);
 int             kill(int);
@@ -96,6 +101,7 @@ void            setkilled(struct proc*);
 struct cpu*     mycpu(void);
 struct cpu*     getmycpu(void);
 struct proc*    myproc();
+int             steal_memory(int, uint64, uint64, uint64);
 void            procinit(void);
 void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
@@ -107,6 +113,7 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+struct proc*    find_proc_with_mapping(struct file *file, uint64 offset, uint64 length);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -173,7 +180,9 @@ pte_t *         walk(pagetable_t, uint64, int);
 uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
+int             uvmsteal(pagetable_t, pagetable_t, uint64, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
+void            vmprint(pagetable_t);
 
 // plic.c
 void            plicinit(void);
@@ -202,4 +211,6 @@ void           bd_init(void*,void*);
 void           bd_free(void*);
 void           *bd_malloc(uint64);
 
-
+//mmap.c
+void            *mmap(uint64 addr, uint64 length, uint64 offset, int prot, int flags, int fd);
+int             munmap(uint64 addr, int length);
